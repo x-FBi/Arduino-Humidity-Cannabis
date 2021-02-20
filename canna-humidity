@@ -1,0 +1,104 @@
+#include <LiquidCrystal.h>
+#include "DHT.h"
+#define DHTPIN 8
+#define DHTTYPE DHT22
+int relayPin = 9; // Relay Pin D9
+// Button Code
+const int buttonPin = 7; // Button is Pin 7
+int lastState = LOW;
+int currentState;
+// END OF BUTTON CODE
+const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+DHT dht(DHTPIN, DHTTYPE);
+String stage = ""; // Set the plant stage, Fl for flower
+String stage1 = "";
+int buttonStatus = 0;
+
+void setup() {
+  pinMode(buttonPin, INPUT_PULLUP);
+  lcd.begin(16, 2);
+  dht.begin();
+  pinMode(relayPin, OUTPUT);
+  Serial.begin(9600);
+  stage = "Veg";
+}
+
+void loop() {
+  lcd.clear();
+  currentState = digitalRead(buttonPin);
+  float hum = dht.readHumidity();
+  float temp = dht.readTemperature();         //Reading the temperature in degrees
+  // Button Press
+  if(lastState == HIGH && currentState == LOW) { // Let's Make a Button
+    Serial.println("The Button is pressed");
+    if(stage = "Veg") {
+      stage = "Fl";
+      Serial.println("Changed to Flower");
+      Serial.println(stage);
+    }else if(stage = "Fl") {
+      stage = "Veg";
+      Serial.println("Changed to Veg");
+    }
+  }
+  else if(lastState == LOW && currentState == HIGH) {
+    Serial.println("The button is released");
+  }
+  // Save the last state
+  lastState = currentState;
+  // End Button Press
+  if (isnan(hum) || isnan(temp)) {      //Checking if the arduino have recieved the values or not
+    lcd.println("Failed to read from DHT sensor!");
+    return;
+  }
+  
+  if (stage = "Veg") { // Veg Stage
+  /* 
+  66% Humidity at 21C, 0.32
+  60% Humidity at 21C, 0.35
+  */
+    if ((temp / hum) >= 0.35 ) { 
+      digitalWrite(relayPin, LOW);  // Close Relay, Turn On      
+      stage1 = "On";
+    }
+    else if ((temp / hum) <= 0.32 ) { // Open Relay, Turn Off
+      digitalWrite(relayPin, HIGH);
+      stage1 = "Off";
+    }
+    else {
+      digitalWrite(relayPin, HIGH); // I don't see a need for this at this time
+    }
+  
+  }
+  else if (stage = "Fl") { // Flower Stage
+  /*
+  39.6% Humidity at 21C, 0.52
+  46% Humidity at 21C, 0.47
+  */
+    if ((temp / hum) >= 0.52 ) {
+      digitalWrite(relayPin, LOW); // Close Relay, Turn On  
+      stage1 = "On";
+    }
+    else if ((temp / hum) <= 0.47 ) {
+      digitalWrite(relayPin, HIGH); // Open Relay, Turn Off
+      stage1 = "Off";
+    }
+  }
+  else {
+    digitalWrite(relayPin, HIGH); // Open Relay, Turn off Relay
+  }
+
+
+  /* Display Temp, Humidity, and Stage*/
+  lcd.setCursor(0, 0);
+  lcd.print("Humi: ");
+  lcd.print(hum); // Humidity
+  lcd.print("% ");
+  lcd.print(stage); // What Stage
+  lcd.setCursor(0, 1);
+  lcd.print("Temp: ");
+  lcd.print(temp);  // Temperature in Celsius 
+  lcd.print("C ");
+  lcd.print(stage1); // On or Off
+  delay(1000); // Loop every 1 seconds
+ }
