@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <LiquidCrystal.h>
 #include "DHT.h"
 #define DHTPIN 8
@@ -21,69 +22,99 @@ void setup() {
   dht.begin();
   pinMode(relayPin, OUTPUT);
   Serial.begin(9600);
-  stage = "Veg";
+  lcd.clear();
+  stage = "Seed";
 }
 
 void loop() {
-  lcd.clear();
+
   currentState = digitalRead(buttonPin);
   float hum = dht.readHumidity();
   float temp = dht.readTemperature();         //Reading the temperature in degrees
   // Button Press
-  if(lastState == HIGH && currentState == LOW) { // Let's Make a Button
+  if (lastState == HIGH && currentState == LOW) { // Let's Make a Button
     Serial.println("The Button is pressed");
-    if(stage = "Veg") {
-      stage = "Fl";
+    if (stage == "Veg") {
+      stage = "Flwr";
       Serial.println("Changed to Flower");
-      Serial.println(stage);
-    }else if(stage = "Fl") {
+      lcd.clear();
+    } else if (stage == "Flwr") {
+      lcd.clear();
+      stage = "Dry";
+      Serial.println("Changed to Dry");
+    } else if (stage == "Dry") {
+      lcd.clear();
+      stage = "Seed";
+      Serial.println("Changed to Seed");
+    } else if (stage == "Seed") {
+      lcd.clear();
       stage = "Veg";
       Serial.println("Changed to Veg");
     }
-  }
-  else if(lastState == LOW && currentState == HIGH) {
+  } else if (lastState == LOW && currentState == HIGH) {
     Serial.println("The button is released");
   }
-  // Save the last state
-  lastState = currentState;
-  // End Button Press
+  lastState = currentState;   // Save the last state
+
   if (isnan(hum) || isnan(temp)) {      //Checking if the arduino have recieved the values or not
     lcd.println("Failed to read from DHT sensor!");
     return;
   }
-  
-  if (stage = "Veg") { // Veg Stage
-  /* 
-  66% Humidity at 21C, 0.32
-  60% Humidity at 21C, 0.35
-  */
-    if ((temp / hum) >= 0.35 ) { 
-      digitalWrite(relayPin, LOW);  // Close Relay, Turn On      
-      stage1 = "On";
+
+  if (stage == "Veg") { // Veg Stage
+    /*
+      66% Humidity at 21C, 0.32
+      60% Humidity at 21C, 0.35
+    */
+    if ((temp / hum) >= 0.35 ) {
+      digitalWrite(relayPin, LOW);  // Close Relay, Turn On
+      stage1 = "On ";
     }
     else if ((temp / hum) <= 0.32 ) { // Open Relay, Turn Off
       digitalWrite(relayPin, HIGH);
       stage1 = "Off";
     }
-    else {
-      digitalWrite(relayPin, HIGH); // I don't see a need for this at this time
-    }
-  
-  }
-  else if (stage = "Fl") { // Flower Stage
-  /*
-  39.6% Humidity at 21C, 0.52
-  46% Humidity at 21C, 0.47
-  */
+  } else if (stage == "Flwr") { // Flower Stage
+    /*
+      39.6% Humidity at 21C, 0.52
+      46% Humidity at 21C, 0.47
+    */
     if ((temp / hum) >= 0.52 ) {
-      digitalWrite(relayPin, LOW); // Close Relay, Turn On  
-      stage1 = "On";
+      digitalWrite(relayPin, LOW); // Close Relay, Turn On
+      stage1 = "On ";
     }
     else if ((temp / hum) <= 0.47 ) {
       digitalWrite(relayPin, HIGH); // Open Relay, Turn Off
       stage1 = "Off";
     }
+  } else if (stage == "Dry") { // Drying
+    /*
+      40% Humidity at 20C, 0.5
+      50% Humidity at 20C, 0.4
+    */
+    if ((temp / hum) >= 0.5 ) {
+      digitalWrite(relayPin, LOW); // Close Relay, Turn On
+      stage1 = "On ";
+    }
+    else if ((temp / hum) <= 0.4 ) {
+      digitalWrite(relayPin, HIGH); // Open Relay, Turn Off
+      stage1 = "Off";
+    }
+  } else if (stage == "Seed") { // Seedling Stage
+    /*
+      75% Humidity at 21C, 0.28
+      70% Humidity at 21C, 0.3
+    */
+    if ((temp / hum) >= 0.3 ) {
+      digitalWrite(relayPin, LOW); // Close Relay, Turn On
+      stage1 = "On ";
+    }
+    else if ((temp / hum) <= 0.28 ) {
+      digitalWrite(relayPin, HIGH); // Open Relay, Turn Off
+      stage1 = "Off";
+    }
   }
+
   else {
     digitalWrite(relayPin, HIGH); // Open Relay, Turn off Relay
   }
@@ -92,13 +123,13 @@ void loop() {
   /* Display Temp, Humidity, and Stage*/
   lcd.setCursor(0, 0);
   lcd.print("Humi: ");
-  lcd.print(hum); // Humidity
+  lcd.print(hum, 1); // Humidity
   lcd.print("% ");
   lcd.print(stage); // What Stage
   lcd.setCursor(0, 1);
   lcd.print("Temp: ");
-  lcd.print(temp);  // Temperature in Celsius 
+  lcd.print(temp, 1);  // Temperature in Celsius
   lcd.print("C ");
   lcd.print(stage1); // On or Off
-  delay(1000); // Loop every 1 seconds
- }
+  delay(2200); // Loop every 2.2 seconds
+}
